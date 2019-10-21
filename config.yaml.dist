@@ -1,0 +1,19 @@
+app:
+  log_level: 6
+  http:
+    port: 8080
+
+redirect:
+  origin: ".dev.local:8080"
+  options:
+    keep_uri: true
+    permanent_redirect: true
+    enforce_https: true
+  keyword:
+    slash: "--slash--"
+    dot: "--dot--"
+    colon: "--colon--"
+    interrogation-mark: "--int--"
+    ampersand: "--amp--"
+    equal: "--equal--"
+    percent: "--percent--"
