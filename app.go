@@ -23,7 +23,7 @@ func NewApp(l logrus.FieldLogger, v *viper.Viper) *App {
 			Addr: fmt.Sprintf(":%d", v.GetInt("app.http.port")),
 		},
 		Logger:   l,
-		Redirect: NewRedirect(v),
+		Redirect: NewRedirect(l, v),
 	}
 }
 
@@ -50,7 +50,12 @@ func (a *App) Close(ctx context.Context) error {
 }
 
 func (a *App) redirect(w http.ResponseWriter, r *http.Request) {
-	t, sc := a.Redirect.Redirect(r)
+	t, sc, err := a.Redirect.Redirect(r)
+	if err != nil {
+		a.Logger.WithField("domain", r.Host).Error(err)
+		http.Error(w, "resolver fail", http.StatusInternalServerError)
+		return
+	}
 
 	a.Logger.WithFields(logrus.Fields{"domain": r.Host, "target": t}).Info("redirect")
 

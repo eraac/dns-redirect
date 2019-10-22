@@ -2,16 +2,20 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/viper"
 )
 
 type (
 	Redirect struct {
-		Origin   string
+		Host     string
 		Replacer *strings.Replacer
+		Logger   logrus.FieldLogger
 
 		Options RedirectOptions
 	}
@@ -23,7 +27,7 @@ type (
 	}
 )
 
-func NewRedirect(v *viper.Viper) Redirect {
+func NewRedirect(l logrus.FieldLogger, v *viper.Viper) Redirect {
 	r := strings.NewReplacer(
 		v.GetString("redirect.keyword.slash"), "/",
 		v.GetString("redirect.keyword.dot"), ".",
@@ -45,8 +49,9 @@ func NewRedirect(v *viper.Viper) Redirect {
 	}
 
 	return Redirect{
-		Origin:   v.GetString("redirect.origin"),
+		Host:     v.GetString("redirect.host"),
 		Replacer: r,
+		Logger:   l,
 		Options: RedirectOptions{
 			StatusCodeRedirect: sc,
 			Schema:             s,
@@ -55,13 +60,22 @@ func NewRedirect(v *viper.Viper) Redirect {
 	}
 }
 
-func (r Redirect) Redirect(req *http.Request) (string, int) {
-	sd := strings.TrimSuffix(req.Host, r.Origin)
+func (r Redirect) Redirect(req *http.Request) (string, int, error) {
+	// remove port, if any (can't resolve with)
+	h := strings.TrimRight(req.Host, ":0123456789")
+	cname, err := net.LookupCNAME(h)
+	if err != nil {
+		return "", 0, err
+	}
+
+	r.Logger.WithFields(logrus.Fields{"host": h, "cname": cname}).Debug("resolve")
+
+	sd := strings.TrimSuffix(cname, r.Host)
 	t := fmt.Sprintf("%s%s", r.Options.Schema, r.Replacer.Replace(sd))
 
 	if r.Options.KeepURI && req.RequestURI != "/" {
 		t = fmt.Sprintf("%s%s", t, req.RequestURI)
 	}
 
-	return t, r.Options.StatusCodeRedirect
+	return t, r.Options.StatusCodeRedirect, nil
 }

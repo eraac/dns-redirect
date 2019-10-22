@@ -4,10 +4,10 @@ app:
     port: 8080
 
 redirect:
-  origin: ".dev.local:8080"
+  host: ".dev.local." # don't forget the dots
   options:
     keep_uri: true
-    permanent_redirect: true
+    permanent_redirect: true # take care, Chrome has aggressive cache with permanent redirect
     enforce_https: true
   keyword:
     slash: "--slash--"
