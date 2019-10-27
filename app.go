@@ -3,67 +3,74 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"net/http"
 )
 
 type (
 	App struct {
-		Server http.Server
-		Logger logrus.FieldLogger
+		server http.Server
+		logger logrus.FieldLogger
 
-		Redirect Redirect
+		redirect *Redirect
 	}
 )
 
-func NewApp(l logrus.FieldLogger, v *viper.Viper) *App {
+func NewApp(l logrus.FieldLogger, v *viper.Viper) (*App, error) {
+	r, err := NewRedirect(l, v)
+	if err != nil {
+		l.WithField("context", "new_redirect").Error(err)
+		return nil, err
+	}
+
 	return &App{
-		Server: http.Server{
+		server: http.Server{
 			Addr: fmt.Sprintf(":%d", v.GetInt("app.http.port")),
 		},
-		Logger:   l,
-		Redirect: NewRedirect(l, v),
-	}
+		logger:   l,
+		redirect: r,
+	}, nil
 }
 
 func (a *App) Listen() error {
-	a.Logger.WithField("port", a.Server.Addr).Info("http server listening")
-	defer a.Logger.WithField("port", a.Server.Addr).Info("http server stopping")
+	a.logger.WithField("port", a.server.Addr).Info("http server listening")
+	defer a.logger.WithField("port", a.server.Addr).Info("http server stopping")
 
-	return a.Server.ListenAndServe()
+	return a.server.ListenAndServe()
 }
 
 func (a *App) RegisterHandler() {
 	h := http.NewServeMux()
 
 	h.HandleFunc("/health_check", a.health)
-	h.HandleFunc("/", a.redirect)
+	h.HandleFunc("/", a.redirection)
 
-	a.Server.Handler = h
+	a.server.Handler = h
 }
 
 func (a *App) Close(ctx context.Context) error {
-	a.Logger.Info("graceful shutdown...")
+	a.logger.Info("graceful shutdown...")
 
-	return a.Server.Shutdown(ctx)
+	return a.server.Shutdown(ctx)
 }
 
-func (a *App) redirect(w http.ResponseWriter, r *http.Request) {
-	t, sc, err := a.Redirect.Redirect(r)
+func (a *App) redirection(w http.ResponseWriter, r *http.Request) {
+	t, sc, err := a.redirect.Redirect(r)
 	if err != nil {
-		a.Logger.WithField("domain", r.Host).Error(err)
+		a.logger.WithField("domain", r.Host).Error(err)
 		http.Error(w, "resolver fail", http.StatusInternalServerError)
 		return
 	}
 
-	a.Logger.WithFields(logrus.Fields{"domain": r.Host, "target": t}).Info("redirect")
+	a.logger.WithFields(logrus.Fields{"domain": r.Host, "target": t}).Info("redirection")
 
 	http.Redirect(w, r, t, sc)
 }
 
 func (a *App) health(w http.ResponseWriter, _ *http.Request) {
-	a.Logger.Debug("health")
+	a.logger.Debug("health")
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status": "ok"}`))

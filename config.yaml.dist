@@ -17,3 +17,11 @@ redirect:
     ampersand: "--amp--"
     equal: "--equal--"
     percent: "--percent--"
+
+resolver:
+  type: "dns"
+  config:
+    dns_server: "8.8.8.8"
+    timeout: 5
+    hosts:
+      dev.local: "google--dot--com.dev.local."

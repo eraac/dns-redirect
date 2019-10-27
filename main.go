@@ -11,6 +11,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+type (
+	Error string
+)
+
+func (e Error) Error() string {
+	return string(e)
+}
+
 func init() {
 	logrus.SetLevel(logrus.InfoLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{})
@@ -31,7 +39,11 @@ func main() {
 
 	l := LoadLogger(v)
 
-	app := NewApp(l, v)
+	app, err := NewApp(l, v)
+	if err != nil {
+		l.WithField("context", "init_app").Fatal(err)
+	}
+
 	app.RegisterHandler()
 
 	go func() {
@@ -58,7 +70,7 @@ func LoadConfiguration(filename string) (*viper.Viper, error) {
 		return nil, err
 	}
 
-	logrus.WithField("filename", viper.ConfigFileUsed()).Info("reading config file")
+	logrus.WithField("filename", v.ConfigFileUsed()).Info("reading config file")
 
 	return v, nil
 }

@@ -2,32 +2,31 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"strings"
 
 	"github.com/sirupsen/logrus"
-
 	"github.com/spf13/viper"
 )
 
 type (
 	Redirect struct {
-		Host     string
-		Replacer *strings.Replacer
-		Logger   logrus.FieldLogger
+		host     string
+		logger   logrus.FieldLogger
+		resolver Resolver
 
-		Options RedirectOptions
+		options RedirectOptions
 	}
 
 	RedirectOptions struct {
-		StatusCodeRedirect int
-		Schema             string
-		KeepURI            bool
+		replacer           *strings.Replacer
+		statusCodeRedirect int
+		schema             string
+		keepURI            bool
 	}
 )
 
-func NewRedirect(l logrus.FieldLogger, v *viper.Viper) Redirect {
+func NewRedirect(l logrus.FieldLogger, v *viper.Viper) (*Redirect, error) {
 	r := strings.NewReplacer(
 		v.GetString("redirect.keyword.slash"), "/",
 		v.GetString("redirect.keyword.dot"), ".",
@@ -48,34 +47,41 @@ func NewRedirect(l logrus.FieldLogger, v *viper.Viper) Redirect {
 		s = "" // keep as requested
 	}
 
-	return Redirect{
-		Host:     v.GetString("redirect.host"),
-		Replacer: r,
-		Logger:   l,
-		Options: RedirectOptions{
-			StatusCodeRedirect: sc,
-			Schema:             s,
-			KeepURI:            v.GetBool("redirect.options.keep_uri"),
-		},
+	resolver, err := NewResolverFromConfig(l, v)
+	if err != nil {
+		l.WithField("context", "new_resolver_from_config").Error(err)
+		return nil, err
 	}
+
+	return &Redirect{
+		host:     v.GetString("redirect.host"),
+		logger:   l,
+		resolver: resolver,
+		options: RedirectOptions{
+			replacer:           r,
+			statusCodeRedirect: sc,
+			schema:             s,
+			keepURI:            v.GetBool("redirect.options.keep_uri"),
+		},
+	}, nil
 }
 
 func (r Redirect) Redirect(req *http.Request) (string, int, error) {
 	// remove port, if any (can't resolve with)
-	h := strings.TrimRight(req.Host, ":0123456789")
-	cname, err := net.LookupCNAME(h)
+	o := strings.TrimRight(req.Host, ":0123456789")
+	cname, err := r.resolver.Resolve(o)
 	if err != nil {
 		return "", 0, err
 	}
 
-	r.Logger.WithFields(logrus.Fields{"host": h, "cname": cname}).Debug("resolve")
+	r.logger.WithFields(logrus.Fields{"host": r.host, "origin": o, "cname": cname}).Debug("resolver response")
 
-	sd := strings.TrimSuffix(cname, r.Host)
-	t := fmt.Sprintf("%s%s", r.Options.Schema, r.Replacer.Replace(sd))
+	sd := strings.TrimSuffix(cname, r.host)
+	t := fmt.Sprintf("%s%s", r.options.schema, r.options.replacer.Replace(sd))
 
-	if r.Options.KeepURI && req.RequestURI != "/" {
+	if r.options.keepURI && req.RequestURI != "/" {
 		t = fmt.Sprintf("%s%s", t, req.RequestURI)
 	}
 
-	return t, r.Options.StatusCodeRedirect, nil
+	return t, r.options.statusCodeRedirect, nil
 }
