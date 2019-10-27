@@ -28,13 +28,13 @@ type (
 
 func NewRedirect(l logrus.FieldLogger, v *viper.Viper) (*Redirect, error) {
 	r := strings.NewReplacer(
-		v.GetString("redirect.keyword.slash"), "/",
-		v.GetString("redirect.keyword.dot"), ".",
-		v.GetString("redirect.keyword.colon"), ":",
-		v.GetString("redirect.keyword.interrogation-mark"), "?",
-		v.GetString("redirect.keyword.ampersand"), "&",
-		v.GetString("redirect.keyword.equal"), "=",
-		v.GetString("redirect.keyword.percent"), "%",
+		v.GetString("redirect.options.keyword.slash"), "/",
+		v.GetString("redirect.options.keyword.dot"), ".",
+		v.GetString("redirect.options.keyword.colon"), ":",
+		v.GetString("redirect.options.keyword.interrogation-mark"), "?",
+		v.GetString("redirect.options.keyword.ampersand"), "&",
+		v.GetString("redirect.options.keyword.equal"), "=",
+		v.GetString("redirect.options.keyword.percent"), "%",
 	)
 
 	sc := http.StatusTemporaryRedirect

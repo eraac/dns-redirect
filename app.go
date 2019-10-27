@@ -57,16 +57,16 @@ func (a *App) Close(ctx context.Context) error {
 }
 
 func (a *App) redirection(w http.ResponseWriter, r *http.Request) {
-	t, sc, err := a.redirect.Redirect(r)
+	l, sc, err := a.redirect.Redirect(r)
 	if err != nil {
 		a.logger.WithField("domain", r.Host).Error(err)
 		http.Error(w, "resolver fail", http.StatusInternalServerError)
 		return
 	}
 
-	a.logger.WithFields(logrus.Fields{"domain": r.Host, "target": t}).Info("redirection")
+	a.logger.WithFields(logrus.Fields{"domain": r.Host, "location": l}).Info("redirection")
 
-	http.Redirect(w, r, t, sc)
+	http.Redirect(w, r, l, sc)
 }
 
 func (a *App) health(w http.ResponseWriter, _ *http.Request) {
