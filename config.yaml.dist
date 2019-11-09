@@ -22,7 +22,7 @@ resolver:
   type: "dns" # or "static"
   config:
     # only for dns (optional)
-    dns_server: "8.8.8.8"
+    dns_server: "8.8.8.8:53"
     timeout: 5
 
     # only for static (required)
