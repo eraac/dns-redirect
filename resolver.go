@@ -58,9 +58,9 @@ func NewDNSResolver(l logrus.FieldLogger, v *viper.Viper) (Resolver, error) {
 
 		timeout := time.Duration(v.GetInt("resolver.config.timeout")) * time.Second
 
-		r.resolver.Dial = func(ctx context.Context, network, address string) (conn net.Conn, e error) {
+		r.resolver.Dial = func(ctx context.Context, network, _ string) (conn net.Conn, e error) {
 			d := net.Dialer{Timeout: timeout}
-			return d.DialContext(ctx, "udp", s)
+			return d.DialContext(ctx, network, s)
 		}
 	}
 
