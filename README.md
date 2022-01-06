@@ -21,7 +21,7 @@ Each request will redirect with 307 status code
 * `jobs.domain.tld` -> `https://domain.tld/jobs`
 * `jobs.domain.tld/67` -> `https://domain.tld/jobs/67` original URI is keep by default and append to the location
 * `app.domain.tld` -> `https://app.domain.tld:8888`
-* `resume.domain.tld` -> `https://youtube.com/watch?v=dQw4w9WgXcQ`
+* `youtube.domain.tld` -> `https://youtube.com/watch?v=dQw4w9WgXcQ`
 
 ## Configuration
 
